@@ -1,10 +1,9 @@
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View, Button } from "react-native";
 import { Header } from "../components/header";
+import{ Link, router } from "expo-router";
 
-// import Constants from 'expo-constants'
-
-// const statusBarHeight = Constants.statusBarHeight;
 export default function Index() {
+
   return (
     <ScrollView
     style={{ flex: 1}}
@@ -13,6 +12,7 @@ export default function Index() {
     >
       <View className="w-full px-4">
         <Header/>
+        <Link href="/AddProduct">Go to AddProduct</Link>
       </View>
     </ScrollView>
   );
