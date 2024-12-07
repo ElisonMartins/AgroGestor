@@ -1,0 +1,17 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Produto {
+  id          Int      @id @default(autoincrement())
+  name        String   // Nome do produto
+  price       Float    // Preço por unidade ou quilo
+  unitType    String   // Tipo: "Unidade" ou "Quilo"
+  quantity    Int      // Quantidade disponível
+  createdAt   DateTime @default(now()) // Data de criação do produto
+}
