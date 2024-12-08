@@ -8,10 +8,27 @@ datasource db {
 }
 
 model Produto {
-  id          Int      @id @default(autoincrement())
-  name        String   // Nome do produto
-  price       Float    // Preço por unidade ou quilo
-  unitType    String   // Tipo: "Unidade" ou "Quilo"
-  quantity    Int      // Quantidade disponível
-  createdAt   DateTime @default(now()) // Data de criação do produto
+  id           Int            @id @default(autoincrement())
+  name         String         // Nome do produto
+  price        Float          // Preço por unidade ou quilo
+  unitType     String         // Tipo: "Unidade" ou "Quilo"
+  quantity     Int            // Quantidade disponível
+  createdAt    DateTime       @default(now()) // Data de criação do produto
+
+  CarrinhoItem CarrinhoItem[] // Relacionamento com os itens do carrinho
+}
+
+model Carrinho {
+  id        Int            @id @default(autoincrement())
+  createdAt DateTime       @default(now())
+  items     CarrinhoItem[]
+}
+
+model CarrinhoItem {
+  id         Int      @id @default(autoincrement())
+  quantidade Int      // Quantidade adicionada ao carrinho
+  produto    Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade) // Cascata configurada aqui
+  produtoId  Int
+  carrinho   Carrinho @relation(fields: [carrinhoId], references: [id])
+  carrinhoId Int
 }
