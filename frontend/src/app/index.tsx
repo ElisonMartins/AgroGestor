@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { SafeAreaView, ScrollView, Text, View, Image, TouchableOpacity } from "react-native";
 import axios from "axios";
 import { router, useFocusEffect } from "expo-router";
-import { API_URL } from "@env"; // Importa a variável do .env
+import { API_URL } from "@env"; 
 
 export default function Index() {
   const [produtos, setProdutos] = useState([]);
