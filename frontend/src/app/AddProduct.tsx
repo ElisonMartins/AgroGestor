@@ -8,18 +8,14 @@ import {
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-// import * as ImagePicker from "expo-image-picker";
 import axios from "axios";
+import { API_URL } from "@env"; 
 
 export default function AddProduct() {
   const [productName, setProductName] = useState("");
-  // const [productImage, setProductImage] = useState<string | null>(null);
   const [productPrice, setProductPrice] = useState("");
   const [productQuantity, setProductQuantity] = useState("");
   const [unitType, setUnitType] = useState<"Unidade" | "Quilo">("Unidade");
-
-  // API base URL
-  const API_URL = "http://192.168.0.108:3001/produto";
 
   const handleAddProduct = async () => {
     if (!productName || !productPrice || !productQuantity) {
@@ -28,12 +24,11 @@ export default function AddProduct() {
     }
 
     try {
-      const response = await axios.post(API_URL, {
+      const response = await axios.post(`${API_URL}/produto`, {
         name: productName,
         price: parseFloat(productPrice),
         unitType,
         quantity: parseInt(productQuantity, 10),
-        // image: productImage, // Temporariamente comentado
       });
 
       alert("Produto cadastrado com sucesso!");
@@ -41,7 +36,6 @@ export default function AddProduct() {
 
       // Resetando os campos após o cadastro
       setProductName("");
-      // setProductImage(null);
       setProductPrice("");
       setProductQuantity("");
     } catch (error) {
