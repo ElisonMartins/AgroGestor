@@ -19,7 +19,7 @@ type Produto = {
   price: number;
   unitType: string;
   quantity: number;
-  image?: string;
+  imageUrl?: string;
 };
 
 export default function Index() {
@@ -62,7 +62,7 @@ export default function Index() {
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         const errorMessage =
-          error.response?.data?.message || "Erro ao adicionar ao carrinho.";
+          error.response?.data?.error || "Erro ao adicionar ao carrinho.";
         Alert.alert("Erro", errorMessage);
       } else {
         console.error("Erro desconhecido:", error);
@@ -95,7 +95,7 @@ export default function Index() {
       >
         <Image
           source={{
-            uri: produto.image || "https://via.placeholder.com/100",
+            uri: produto.imageUrl || "https://via.placeholder.com/100",
           }}
           className="w-20 h-20 rounded-lg mr-4"
         />

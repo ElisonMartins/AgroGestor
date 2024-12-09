@@ -13,6 +13,7 @@ model Produto {
   price        Float          // Preço por unidade ou quilo
   unitType     String         // Tipo: "Unidade" ou "Quilo"
   quantity     Int            // Quantidade disponível
+  imageUrl     String?        // URL da imagem no S3 (campo opcional)
   createdAt    DateTime       @default(now()) // Data de criação do produto
 
   CarrinhoItem CarrinhoItem[] // Relacionamento com os itens do carrinho

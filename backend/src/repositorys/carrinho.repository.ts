@@ -68,6 +68,7 @@ export const getCarrinhoItems = async () => {
     unitType: item.produto.unitType,
     quantidade: item.quantidade,
     subtotal: item.quantidade * item.produto.price,
+    imageUrl: item.produto.imageUrl || "https://via.placeholder.com/100", // Adiciona a URL da imagem ou um placeholder
   }));
 };
 

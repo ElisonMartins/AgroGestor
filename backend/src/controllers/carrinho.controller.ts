@@ -8,6 +8,7 @@ export const add = async (req: Request, res: Response): Promise<void> => {
         // Validação do corpo da solicitação
         await carrinhoValidation.validate(req.body, { abortEarly: false });
 
+        // Adicionar item ao carrinho
         const carrinhoItem = await addCarrinhoItem(req.body);
         res.status(201).send(carrinhoItem);
     } catch (e) {
@@ -15,7 +16,11 @@ export const add = async (req: Request, res: Response): Promise<void> => {
             res.status(400).send({ errors: e.errors });
         } else {
             console.error(e);
-            res.status(500).send({ error: "Erro no servidor ao adicionar item ao carrinho." });
+            if (e instanceof Error && e.message.includes("Quantidade indisponível")) {
+                res.status(400).send({ error: e.message });
+            } else {
+                res.status(500).send({ error: "Erro no servidor ao adicionar item ao carrinho." });
+            }
         }
     }
 };
@@ -23,7 +28,12 @@ export const add = async (req: Request, res: Response): Promise<void> => {
 export const get = async (req: Request, res: Response): Promise<void> => {
     try {
         const items = await getCarrinhoItems();
-        res.status(200).send(items);
+        res.status(200).send(
+            items.map((item) => ({
+                ...item,
+                imageUrl: item.imageUrl || "https://via.placeholder.com/100", // Adiciona imagem padrão
+            }))
+        );
     } catch (e) {
         console.error(e);
         res.status(500).send({ error: "Erro no servidor ao listar itens do carrinho." });

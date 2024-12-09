@@ -11,7 +11,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { API_URL } from "@env";
-import { useFocusEffect } from "@react-navigation/native"; // Ou @expo/router se estiver usando o Expo Router
+import { useFocusEffect } from "@react-navigation/native";
 
 type CarrinhoItem = {
   id: number;
@@ -21,7 +21,7 @@ type CarrinhoItem = {
   unitType: string;
   quantidade: number;
   subtotal: number;
-  image?: string;
+  imageUrl?: string; // Altere para usar imageUrl
 };
 
 export default function Cart() {
@@ -84,7 +84,7 @@ export default function Cart() {
 
       {/* Imagem e informações do produto */}
       <Image
-        source={{ uri: item.image || "https://via.placeholder.com/100" }}
+        source={{ uri: item.imageUrl || "https://via.placeholder.com/100" }}
         className="w-20 h-20 rounded-lg mr-4"
       />
       <View className="flex-1 justify-center">

@@ -1,34 +1,33 @@
 import { Request, Response } from "express";
-import { produtoValidation } from "../validations/produto.validation";
-import { ValidationError } from "yup"; // Importa ValidationError
 import { createProduto, getAll, getById } from "../repositorys/produto.repository";
+import { produtoValidation } from "../validations/produto.validation";
+import { ValidationError } from "yup";
 
-export const create = async (req: Request, res: Response) => {
+export const create = async (req: Request, res: Response): Promise<void> => {
     try {
-        // Validação do corpo da solicitação
+        const imageUrl = (req.file as Express.MulterS3.File)?.location || null;
+
         await produtoValidation.validate(req.body, { abortEarly: false });
 
-        // Criação do produto no banco de dados
-        const produto = await createProduto(req.body);
+        const produto = await createProduto({ ...req.body, imageUrl });
         res.status(201).send(produto);
-    } catch (e) {
-        if (e instanceof ValidationError) {
-            // Retorna os erros detalhados de validação
-            res.status(400).send({ errors: e.errors });
+    } catch (error) {
+        if (error instanceof ValidationError) {
+            res.status(400).send({ errors: error.errors });
         } else {
-            // Erros genéricos
-            console.error(e);
+            console.error("Erro ao criar o produto:", error);
             res.status(500).send({ error: "Erro no servidor ao criar o produto." });
         }
     }
 };
 
-export const get = async (req: Request, res: Response) => {
+export const get = async (_req: Request, res: Response): Promise<void> => {
     try {
         const produtos = await getAll();
         res.status(200).send(produtos);
-    } catch (e) {
-        res.status(400).send(e);
+    } catch (error) {
+        console.error("Erro ao listar produtos:", error);
+        res.status(500).send({ error: "Erro no servidor ao listar produtos." });
     }
 };
 
@@ -36,17 +35,19 @@ export const getId = async (req: Request, res: Response): Promise<void> => {
     try {
         const id = Number(req.params.id);
         if (isNaN(id)) {
-            res.status(400).json({ error: "ID inválido." });
+            res.status(400).send({ error: "ID inválido." });
             return;
         }
+
         const produto = await getById(id);
         if (!produto) {
-            res.status(404).json({ error: "Produto não encontrado." });
+            res.status(404).send({ error: "Produto não encontrado." });
             return;
         }
-        res.status(200).json(produto);
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: "Erro no servidor ao buscar o produto." });
+
+        res.status(200).send(produto);
+    } catch (error) {
+        console.error("Erro ao buscar produto:", error);
+        res.status(500).send({ error: "Erro no servidor ao buscar produto." });
     }
 };
