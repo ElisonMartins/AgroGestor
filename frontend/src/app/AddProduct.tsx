@@ -22,7 +22,7 @@ export default function AddProduct() {
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"], 
       allowsEditing: true,
       quality: 1,
     });
@@ -40,9 +40,9 @@ export default function AddProduct() {
 
     const formData = new FormData();
     formData.append("name", productName);
-    formData.append("price", productPrice);
+    formData.append("price", parseFloat(productPrice).toString());
     formData.append("unitType", unitType);
-    formData.append("quantity", productQuantity);
+    formData.append("quantity", parseInt(productQuantity, 10).toString());
     formData.append("image", {
       uri: image,
       name: `image_${Date.now()}.jpg`,
@@ -57,15 +57,19 @@ export default function AddProduct() {
       Alert.alert("Sucesso", "Produto cadastrado com sucesso!");
       console.log(response.data);
 
-      // Resetando os campos após o cadastro
       setProductName("");
       setProductPrice("");
       setProductQuantity("");
       setUnitType("Unidade");
       setImage(null);
     } catch (error) {
-      console.error("Erro ao cadastrar o produto:", error);
-      Alert.alert("Erro", "Erro ao cadastrar o produto. Verifique os dados e tente novamente.");
+      if (axios.isAxiosError(error)) {
+        const errorMessage = error.response?.data?.error || "Erro desconhecido.";
+        Alert.alert("Erro", errorMessage);
+      } else {
+        console.error("Erro ao cadastrar o produto:", error);
+        Alert.alert("Erro", "Erro ao cadastrar o produto. Verifique os dados e tente novamente.");
+      }
     }
   };
 
