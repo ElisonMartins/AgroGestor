@@ -22,7 +22,9 @@ model Produto {
 model Carrinho {
   id        Int            @id @default(autoincrement())
   createdAt DateTime       @default(now())
-  items     CarrinhoItem[]
+  items     CarrinhoItem[] // Relacionamento com os itens do carrinho
+
+  Venda     Venda[]        // Relacionamento de um para muitos com Venda
 }
 
 model CarrinhoItem {
@@ -32,4 +34,14 @@ model CarrinhoItem {
   produtoId  Int
   carrinho   Carrinho @relation(fields: [carrinhoId], references: [id])
   carrinhoId Int
+}
+
+model Venda {
+  id          Int      @id @default(autoincrement())
+  total       Float    // Total da venda
+  location    String?  // Local da venda (latitude e longitude ou descrição manual)
+  createdAt   DateTime @default(now()) // Data da venda
+
+  carrinho    Carrinho @relation(fields: [carrinhoId], references: [id], onDelete: Cascade)
+  carrinhoId  Int      @unique // Define relação de um para um entre venda e carrinho
 }

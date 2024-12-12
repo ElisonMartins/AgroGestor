@@ -1,5 +1,8 @@
-import { prisma } from "../services/prisma";
+import { PrismaClient } from "@prisma/client";
 
+const prisma = new PrismaClient();
+
+// Adicionar item ao carrinho
 export const addCarrinhoItem = async (data: { produtoId: number; quantidade: number }) => {
   const produto = await prisma.produto.findUnique({
     where: { id: data.produtoId },
@@ -46,6 +49,7 @@ export const addCarrinhoItem = async (data: { produtoId: number; quantidade: num
   });
 };
 
+// Obter itens do carrinho
 export const getCarrinhoItems = async () => {
   const carrinho = await prisma.carrinho.findUnique({
     where: { id: 1 },
@@ -72,11 +76,13 @@ export const getCarrinhoItems = async () => {
   }));
 };
 
+// Remover item do carrinho
 export const removeCarrinhoItem = async (id: number) => {
   return prisma.carrinhoItem.delete({ where: { id } });
 };
 
-export const checkoutCarrinho = async () => {
+// Finalizar compra e atualizar estoque
+export const checkoutCarrinho = async (): Promise<{ carrinhoId: number; total: number }> => {
   const carrinho = await prisma.carrinho.findUnique({
     where: { id: 1 },
     include: { items: { include: { produto: true } } },
@@ -85,6 +91,8 @@ export const checkoutCarrinho = async () => {
   if (!carrinho || carrinho.items.length === 0) {
     throw new Error("Carrinho vazio.");
   }
+
+  let total = 0;
 
   for (const item of carrinho.items) {
     const produto = item.produto;
@@ -105,10 +113,42 @@ export const checkoutCarrinho = async () => {
         data: { quantity: novaQuantidade },
       });
     }
+
+    total += item.quantidade * produto.price;
   }
 
   // Limpar o carrinho após o checkout
   await prisma.carrinhoItem.deleteMany({ where: { carrinhoId: carrinho.id } });
 
-  return { message: "Compra realizada com sucesso!" };
+  return { carrinhoId: carrinho.id, total };
+};
+
+// Salvar venda associada ao carrinho
+export const saveVenda = async (
+  carrinhoId: number,
+  total: number,
+  location: string | null
+): Promise<{ id: number; total: number; location: string | null; createdAt: Date }> => {
+  return prisma.venda.create({
+    data: {
+      total,
+      location,
+      carrinhoId,
+    },
+  });
+};
+
+// Buscar análise de vendas agrupadas por local
+export const getVendasAgrupadasPorLocal = async (): Promise<
+  { location: string | null; _count: { _all: number }; _sum: { total: number | null } }[]
+> => {
+  console.log("Buscando análise de vendas agrupadas por local...");
+  const vendas = await prisma.venda.groupBy({
+    by: ["location"],
+    _count: { _all: true },
+    _sum: { total: true },
+  });
+
+  console.log("Análise de vendas retornada:", vendas);
+  return vendas;
 };

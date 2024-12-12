@@ -1,10 +1,66 @@
-import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, Alert } from "react-native";
+import MapView, { Marker } from "react-native-maps";
+import axios from "axios";
+import { API_URL } from "@env";
+
+type Venda = {
+  location: string | null;
+  _count: { _all: number };
+  _sum: { total: number | null };
+};
 
 export default function SalesAnalysis() {
+  const [vendas, setVendas] = useState<Venda[]>([]);
+
+  const fetchVendas = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/carrinho/analise`);
+      setVendas(response.data);
+    } catch (error) {
+      console.error("Erro ao buscar análise de vendas:", error);
+      Alert.alert("Erro", "Não foi possível carregar a análise de vendas.");
+    }
+  };
+
+  useEffect(() => {
+    fetchVendas();
+  }, []);
+
+  const parseLocation = (location: string | null) => {
+    if (!location) return { latitude: 0, longitude: 0 };
+    const [latitude, longitude] = location.split(",").map(Number);
+    return { latitude, longitude };
+  };
+
   return (
     <View style={styles.container}>
-      <Text className="text-sm">Análise de Vendas</Text>
+      <MapView
+        style={styles.map}
+        initialRegion={{
+          latitude: -8.8828, // Latitude de Garanhuns
+          longitude: -36.4964, // Longitude de Garanhuns
+          latitudeDelta: 0.05, // Ajuste o zoom (menor valor = mais próximo)
+          longitudeDelta: 0.05, // Ajuste o zoom (menor valor = mais próximo)
+        }}
+      >
+        {vendas.map((venda, index) => {
+          const { latitude, longitude } = parseLocation(venda.location);
+
+          // Ignorar markers com localização inválida
+          if (latitude === 0 && longitude === 0) return null;
+
+          return (
+            <Marker
+              key={index}
+              coordinate={{ latitude, longitude }}
+              title={`Vendas: ${venda._count._all}`}
+              description={`Total: R$ ${venda._sum.total?.toFixed(2) || 0}`}
+            />
+          );
+        })}
+      </MapView>
+
     </View>
   );
 }
@@ -12,8 +68,9 @@ export default function SalesAnalysis() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
     backgroundColor: "#e0ffe0",
+  },
+  map: {
+    flex: 1,
   },
 });
