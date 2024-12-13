@@ -43,5 +43,5 @@ model Venda {
   createdAt   DateTime @default(now()) // Data da venda
 
   carrinho    Carrinho @relation(fields: [carrinhoId], references: [id], onDelete: Cascade)
-  carrinhoId  Int      @unique // Define relação de um para um entre venda e carrinho
+  carrinhoId  Int      // Removido o `@unique`
 }

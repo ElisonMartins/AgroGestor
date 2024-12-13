@@ -28,10 +28,21 @@ export default function SalesAnalysis() {
   }, []);
 
   const parseLocation = (location: string | null) => {
-    if (!location) return { latitude: 0, longitude: 0 };
-    const [latitude, longitude] = location.split(",").map(Number);
+    if (!location) {
+      console.warn("Localização inválida ou ausente:", location);
+      return { latitude: 0, longitude: 0 };
+    }
+  
+    const [latitude, longitude] = location.replace(/\s/g, "").split(",").map(Number);
+  
+    if (isNaN(latitude) || isNaN(longitude)) {
+      console.warn("Coordenadas inválidas:", { latitude, longitude });
+      return { latitude: 0, longitude: 0 };
+    }
+  
     return { latitude, longitude };
   };
+  
 
   return (
     <View style={styles.container}>
@@ -40,8 +51,8 @@ export default function SalesAnalysis() {
         initialRegion={{
           latitude: -8.8828, // Latitude de Garanhuns
           longitude: -36.4964, // Longitude de Garanhuns
-          latitudeDelta: 0.05, // Ajuste o zoom (menor valor = mais próximo)
-          longitudeDelta: 0.05, // Ajuste o zoom (menor valor = mais próximo)
+          latitudeDelta: 0.10, // Ajuste o zoom (menor valor = mais próximo)
+          longitudeDelta: 0.10, // Ajuste o zoom (menor valor = mais próximo)
         }}
       >
         {vendas.map((venda, index) => {

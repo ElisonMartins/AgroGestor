@@ -22,7 +22,6 @@ export const addCarrinhoItem = async (data: { produtoId: number; quantidade: num
   const quantidadeAtualCarrinho = existingItem ? existingItem.quantidade : 0;
   const novaQuantidadeTotal = quantidadeAtualCarrinho + data.quantidade;
 
-  // Verificar se a quantidade total no carrinho excede o estoque
   if (novaQuantidadeTotal > produto.quantity) {
     throw new Error(
       `Estoque insuficiente. Você já tem ${quantidadeAtualCarrinho} no carrinho. Estoque disponível: ${produto.quantity}.`
@@ -30,7 +29,6 @@ export const addCarrinhoItem = async (data: { produtoId: number; quantidade: num
   }
 
   if (existingItem) {
-    // Atualizar a quantidade do item no carrinho
     return prisma.carrinhoItem.update({
       where: { id: existingItem.id },
       data: { quantidade: novaQuantidadeTotal },
@@ -38,7 +36,6 @@ export const addCarrinhoItem = async (data: { produtoId: number; quantidade: num
     });
   }
 
-  // Criar um novo item no carrinho
   return prisma.carrinhoItem.create({
     data: {
       quantidade: data.quantidade,
@@ -72,7 +69,7 @@ export const getCarrinhoItems = async () => {
     unitType: item.produto.unitType,
     quantidade: item.quantidade,
     subtotal: item.quantidade * item.produto.price,
-    imageUrl: item.produto.imageUrl || "https://via.placeholder.com/100", // Adiciona a URL da imagem ou um placeholder
+    imageUrl: item.produto.imageUrl || "https://via.placeholder.com/100",
   }));
 };
 
@@ -83,44 +80,53 @@ export const removeCarrinhoItem = async (id: number) => {
 
 // Finalizar compra e atualizar estoque
 export const checkoutCarrinho = async (): Promise<{ carrinhoId: number; total: number }> => {
-  const carrinho = await prisma.carrinho.findUnique({
-    where: { id: 1 },
-    include: { items: { include: { produto: true } } },
-  });
+  try {
+    console.log("Iniciando o checkout do carrinho...");
+    const carrinho = await prisma.carrinho.findUnique({
+      where: { id: 1 },
+      include: { items: { include: { produto: true } } },
+    });
 
-  if (!carrinho || carrinho.items.length === 0) {
-    throw new Error("Carrinho vazio.");
-  }
-
-  let total = 0;
-
-  for (const item of carrinho.items) {
-    const produto = item.produto;
-
-    if (produto.quantity < item.quantidade) {
-      throw new Error(`Estoque insuficiente para o produto ${produto.name}.`);
+    if (!carrinho || carrinho.items.length === 0) {
+      console.error("Carrinho vazio ou não encontrado.");
+      throw new Error("Carrinho vazio.");
     }
 
-    const novaQuantidade = produto.quantity - item.quantidade;
+    let total = 0;
 
-    if (novaQuantidade === 0) {
-      // Remover o produto quando o estoque chegar a zero
-      await prisma.produto.delete({ where: { id: produto.id } });
-    } else {
-      // Atualizar a quantidade do produto
-      await prisma.produto.update({
-        where: { id: produto.id },
-        data: { quantity: novaQuantidade },
-      });
+    for (const item of carrinho.items) {
+      const produto = item.produto;
+
+      if (produto.quantity < item.quantidade) {
+        console.error(`Estoque insuficiente para o produto ${produto.name}.`);
+        throw new Error(`Estoque insuficiente para o produto ${produto.name}.`);
+      }
+
+      const novaQuantidade = produto.quantity - item.quantidade;
+
+      if (novaQuantidade === 0) {
+        console.log(`Removendo produto ${produto.name}, estoque zerado.`);
+        await prisma.produto.delete({ where: { id: produto.id } });
+      } else {
+        console.log(`Atualizando estoque do produto ${produto.name}: ${novaQuantidade} restantes.`);
+        await prisma.produto.update({
+          where: { id: produto.id },
+          data: { quantity: novaQuantidade },
+        });
+      }
+
+      total += item.quantidade * produto.price;
     }
 
-    total += item.quantidade * produto.price;
+    console.log("Limpando o carrinho...");
+    await prisma.carrinhoItem.deleteMany({ where: { carrinhoId: carrinho.id } });
+
+    console.log(`Checkout concluído com sucesso. Total: ${total}`);
+    return { carrinhoId: carrinho.id, total };
+  } catch (error: any) {
+    console.error("Erro no checkoutCarrinho:", error.message);
+    throw new Error("Erro ao finalizar o checkout do carrinho.");
   }
-
-  // Limpar o carrinho após o checkout
-  await prisma.carrinhoItem.deleteMany({ where: { carrinhoId: carrinho.id } });
-
-  return { carrinhoId: carrinho.id, total };
 };
 
 // Salvar venda associada ao carrinho
@@ -129,13 +135,21 @@ export const saveVenda = async (
   total: number,
   location: string | null
 ): Promise<{ id: number; total: number; location: string | null; createdAt: Date }> => {
-  return prisma.venda.create({
-    data: {
-      total,
-      location,
-      carrinhoId,
-    },
-  });
+  try {
+    console.log("Salvando venda...", { carrinhoId, total, location });
+    const venda = await prisma.venda.create({
+      data: {
+        total,
+        location,
+        carrinhoId,
+      },
+    });
+    console.log("Venda salva com sucesso:", venda);
+    return venda;
+  } catch (error: any) {
+    console.error("Erro ao salvar a venda:", error.message);
+    throw new Error("Erro ao salvar a venda.");
+  }
 };
 
 // Buscar análise de vendas agrupadas por local
