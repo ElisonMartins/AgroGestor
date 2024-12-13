@@ -1,14 +1,8 @@
+// src/screens/SalesAnalysis.tsx
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, Alert } from "react-native";
 import MapView, { Marker } from "react-native-maps";
-import axios from "axios";
-import { API_URL } from "@env";
-
-type Venda = {
-  location: string | null;
-  _count: { _all: number };
-  _sum: { total: number | null };
-};
+import { fetchVendasApi, Venda } from "../api/vendasApi";
 
 export default function SalesAnalysis() {
   const [vendas, setVendas] = useState<Venda[]>([]);
@@ -16,9 +10,9 @@ export default function SalesAnalysis() {
   // Função para buscar as vendas
   const fetchVendas = async () => {
     try {
-      const response = await axios.get(`${API_URL}/carrinho/analise`);
-      console.log("Dados recebidos:", response.data); // Debug do retorno
-      setVendas(response.data);
+      const data = await fetchVendasApi();
+      console.log("Dados recebidos:", data); // Debug do retorno
+      setVendas(data);
     } catch (error) {
       console.error("Erro ao buscar análise de vendas:", error);
       Alert.alert("Erro", "Não foi possível carregar a análise de vendas.");

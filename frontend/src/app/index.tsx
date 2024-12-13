@@ -8,19 +8,13 @@ import {
   TouchableOpacity,
   Alert,
 } from "react-native";
-import axios, { AxiosError } from "axios";
-import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { API_URL } from "@env";
-
-type Produto = {
-  id: number;
-  name: string;
-  price: number;
-  unitType: string;
-  quantity: number;
-  imageUrl?: string;
-};
+import { router, useFocusEffect } from "expo-router";
+import {
+  fetchProdutosApi,
+  addToCarrinhoApi,
+  Produto,
+} from "../api/produtoApi";
 
 export default function Index() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
@@ -28,10 +22,11 @@ export default function Index() {
 
   const fetchProdutos = async () => {
     try {
-      const response = await axios.get(`${API_URL}/produto`);
-      setProdutos(response.data);
+      const data = await fetchProdutosApi();
+      setProdutos(data);
     } catch (error) {
       console.error("Erro ao buscar produtos:", error);
+      Alert.alert("Erro", "Não foi possível carregar os produtos.");
     }
   };
 
@@ -45,14 +40,10 @@ export default function Index() {
     const quantidadeParaAdicionar = quantidades[produtoId] || 1;
 
     try {
-      await axios.post(`${API_URL}/carrinho`, {
-        produtoId,
-        quantidade: quantidadeParaAdicionar,
-      });
+      await addToCarrinhoApi(produtoId, quantidadeParaAdicionar);
 
       Alert.alert("Sucesso", "Produto adicionado ao carrinho!");
 
-      // Reseta a quantidade para 1 após adicionar ao carrinho
       setQuantidades((prev) => ({
         ...prev,
         [produtoId]: 1,
@@ -60,14 +51,8 @@ export default function Index() {
 
       fetchProdutos(); // Atualiza os produtos para refletir o estoque atualizado.
     } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
-        const errorMessage =
-          error.response?.data?.error || "Erro ao adicionar ao carrinho.";
-        Alert.alert("Erro", errorMessage);
-      } else {
-        console.error("Erro desconhecido:", error);
-        Alert.alert("Erro", "Erro desconhecido ao adicionar ao carrinho.");
-      }
+      console.error("Erro ao adicionar ao carrinho:", error);
+      Alert.alert("Erro", "Erro ao adicionar produto ao carrinho.");
     }
   };
 
@@ -77,8 +62,8 @@ export default function Index() {
 
     setQuantidades((prev) => {
       const novaQuantidade = Math.min(
-        Math.max((prev[produtoId] || 1) + delta, 1), // Não permite valores negativos ou zero
-        produto.quantity // Limita ao estoque disponível
+        Math.max((prev[produtoId] || 1) + delta, 1),
+        produto.quantity
       );
 
       return { ...prev, [produtoId]: novaQuantidade };
@@ -108,7 +93,6 @@ export default function Index() {
             Disponível: {produto.quantity}
           </Text>
 
-          {/* Controle de quantidade */}
           <View className="flex-row items-center justify-center mt-2 bg-gray-200 rounded-lg">
             <TouchableOpacity
               onPress={() => handleQuantidadeChange(produto.id, -1)}

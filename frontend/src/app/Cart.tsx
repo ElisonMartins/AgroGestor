@@ -11,27 +11,16 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import axios from "axios";
-import { API_URL } from "@env";
 import { useFocusEffect } from "@react-navigation/native";
 import * as Location from "expo-location";
-
-type CarrinhoItem = {
-  id: number;
-  produtoId: number;
-  name: string;
-  price: number;
-  unitType: string;
-  quantidade: number;
-  subtotal: number;
-  imageUrl?: string;
-};
-
-type NominatimResponse = {
-  display_name: string;
-  lat: string;
-  lon: string;
-};
+import {
+  fetchCarrinhoApi,
+  removeFromCarrinhoApi,
+  finalizarCompraApi,
+  searchLocationApi,
+  CarrinhoItem,
+  NominatimResponse,
+} from "../api/carrinhoApi";
 
 export default function Cart() {
   const [itens, setItens] = useState<CarrinhoItem[]>([]);
@@ -42,21 +31,19 @@ export default function Cart() {
 
   const fetchCarrinho = async () => {
     try {
-      const response = await axios.get(`${API_URL}/carrinho`);
-      setItens(response.data);
+      const data = await fetchCarrinhoApi();
+      setItens(data);
     } catch (error) {
-      console.error("Erro ao buscar itens do carrinho:", error);
       Alert.alert("Erro", "Não foi possível carregar o carrinho.");
     }
   };
 
   const removeFromCarrinho = async (id: number) => {
     try {
-      await axios.delete(`${API_URL}/carrinho/${id}`);
+      await removeFromCarrinhoApi(id);
       Alert.alert("Sucesso", "Item removido do carrinho!");
       fetchCarrinho();
     } catch (error) {
-      console.error("Erro ao remover item do carrinho:", error);
       Alert.alert("Erro", "Não foi possível remover o item.");
     }
   };
@@ -65,13 +52,15 @@ export default function Cart() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permissão Negada", "Permita o acesso à localização para usar o GPS.");
+        Alert.alert(
+          "Permissão Negada",
+          "Permita o acesso à localização para usar o GPS."
+        );
         return null;
       }
       const location = await Location.getCurrentPositionAsync({});
       return `${location.coords.latitude},${location.coords.longitude}`;
     } catch (error) {
-      console.error("Erro ao obter localização:", error);
       Alert.alert("Erro", "Não foi possível obter a localização pelo GPS.");
       return null;
     }
@@ -81,51 +70,41 @@ export default function Cart() {
     if (!query.trim()) return;
     setLoading(true);
     try {
-      const response = await axios.get<NominatimResponse[]>("https://nominatim.openstreetmap.org/search", {
-        params: {
-          q: query,
-          format: "json",
-          limit: 5,
-        },
-        headers: {
-          "User-Agent": "AgroGestorApp/1.0", 
-        },
-      });
-      setSuggestions(response.data);
+      const data = await searchLocationApi(query);
+      setSuggestions(data);
     } catch (error) {
-      console.error("Erro ao buscar localizações:", error);
       Alert.alert("Erro", "Não foi possível buscar as localizações.");
     } finally {
       setLoading(false);
     }
   };
-  
 
   const finalizarCompra = async () => {
     try {
       let location: string | null = manualLocation;
       if (useGps) {
-        location = await getGpsLocation();
-        if (!location) {
+        const gpsLocation = await getGpsLocation();
+        if (!gpsLocation) {
           Alert.alert("Erro", "Não foi possível obter a localização.");
           return;
         }
+        location = gpsLocation;
       }
-
+  
       if (!location || location.trim() === "") {
         Alert.alert("Erro", "Por favor, informe uma localização válida.");
         return;
       }
-
-      await axios.post(`${API_URL}/carrinho/checkout`, { location });
+  
+      await finalizarCompraApi(location);
       Alert.alert("Sucesso", "Compra finalizada com sucesso!");
       setManualLocation("");
       fetchCarrinho();
     } catch (error) {
-      console.error("Erro ao finalizar a compra:", error);
       Alert.alert("Erro", "Não foi possível finalizar a compra.");
     }
   };
+  
 
   useFocusEffect(
     useCallback(() => {
@@ -135,20 +114,33 @@ export default function Cart() {
 
   const renderCarrinhoItem = ({ item }: { item: CarrinhoItem }) => (
     <View key={item.id} className="flex-row bg-white p-4 rounded-lg mb-4 shadow">
-      <TouchableOpacity className="absolute top-2 right-2" onPress={() => removeFromCarrinho(item.id)}>
+      <TouchableOpacity
+        className="absolute top-2 right-2"
+        onPress={() => removeFromCarrinho(item.id)}
+      >
         <Ionicons name="close-outline" size={24} color="#FF0000" />
       </TouchableOpacity>
-      <Image source={{ uri: item.imageUrl || "https://via.placeholder.com/100" }} className="w-16 h-16 rounded-lg mr-4" />
+      <Image
+        source={{ uri: item.imageUrl || "https://via.placeholder.com/100" }}
+        className="w-16 h-16 rounded-lg mr-4"
+      />
       <View className="flex-1">
         <Text className="text-lg font-bold text-gray-800">{item.name}</Text>
-        <Text className="text-sm text-gray-600">Quantidade: {item.quantidade}</Text>
-        <Text className="text-sm text-gray-600">Preço Unitário: R$ {item.price.toFixed(2)}</Text>
-        <Text className="text-lg font-semibold text-green-600">Subtotal: R$ {item.subtotal.toFixed(2)}</Text>
+        <Text className="text-sm text-gray-600">
+          Quantidade: {item.quantidade}
+        </Text>
+        <Text className="text-sm text-gray-600">
+          Preço Unitário: R$ {item.price.toFixed(2)}
+        </Text>
+        <Text className="text-lg font-semibold text-green-600">
+          Subtotal: R$ {item.subtotal.toFixed(2)}
+        </Text>
       </View>
     </View>
   );
 
-  const calculateTotal = () => itens.reduce((total, item) => total + item.subtotal, 0).toFixed(2);
+  const calculateTotal = () =>
+    itens.reduce((total, item) => total + item.subtotal, 0).toFixed(2);
 
   return (
     <SafeAreaView className="flex-1 bg-gray-100">
@@ -157,9 +149,15 @@ export default function Cart() {
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderCarrinhoItem}
         ListHeaderComponent={
-          <Text className="text-2xl font-bold text-center text-green-600 my-4">Carrinho de Compras</Text>
+          <Text className="text-2xl font-bold text-center text-green-600 my-4">
+            Carrinho de Compras
+          </Text>
         }
-        ListEmptyComponent={<Text className="text-center text-gray-400">Seu carrinho está vazio.</Text>}
+        ListEmptyComponent={
+          <Text className="text-center text-gray-400">
+            Seu carrinho está vazio.
+          </Text>
+        }
         ListFooterComponent={
           itens.length > 0 ? (
             <View className="bg-white rounded-lg p-4 shadow mt-4">
