@@ -15,7 +15,9 @@ const handleApiError = (error: unknown): never => {
   if (axios.isAxiosError(error)) {
     const statusCode = error.response?.status || "Desconhecido";
     const errorMessage =
-      error.response?.data?.error || error.response?.data?.details || "Erro desconhecido no servidor.";
+      error.response?.data?.error ||
+      error.response?.data?.details ||
+      "Erro desconhecido no servidor.";
     console.error(`Erro (${statusCode}):`, errorMessage);
     throw new Error(errorMessage);
   } else {
@@ -40,6 +42,9 @@ export const addToCarrinhoApi = async (
   quantidade: number
 ): Promise<void> => {
   try {
+    if (quantidade <= 0) {
+      throw new Error("A quantidade deve ser maior que zero.");
+    }
     await axios.post(`${API_URL}/carrinho`, {
       produtoId,
       quantidade,

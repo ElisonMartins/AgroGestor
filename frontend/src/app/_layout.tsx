@@ -10,7 +10,7 @@ export default function RootLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          headerTitle: "Home",
+          headerTitle: "Produtos disponíveis",
           tabBarLabel: "Home",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color} />
