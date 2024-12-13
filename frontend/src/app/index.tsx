@@ -4,21 +4,15 @@ import {
   ScrollView,
   Text,
   View,
-  Image,
-  TouchableOpacity,
   Alert,
+  TouchableOpacity,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
-import {
-  fetchProdutosApi,
-  addToCarrinhoApi,
-  Produto,
-} from "../api/produtoApi";
+import { fetchProdutosApi, addToCarrinhoApi, Produto } from "../api/produtoApi";
+import ProductCard from "../components/ProductCard"; // Importando o componente ProductCard
 
 export default function Index() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
-  const [quantidades, setQuantidades] = useState<{ [key: number]: number }>({});
 
   const fetchProdutos = async () => {
     try {
@@ -31,98 +25,14 @@ export default function Index() {
   };
 
   const addToCarrinho = async (produtoId: number) => {
-    const produto = produtos.find((p) => p.id === produtoId);
-    if (!produto) {
-      Alert.alert("Erro", "Produto não encontrado.");
-      return;
-    }
-
-    const quantidadeParaAdicionar = quantidades[produtoId] || 1;
-
     try {
-      await addToCarrinhoApi(produtoId, quantidadeParaAdicionar);
-
+      await addToCarrinhoApi(produtoId, 1);
       Alert.alert("Sucesso", "Produto adicionado ao carrinho!");
-
-      setQuantidades((prev) => ({
-        ...prev,
-        [produtoId]: 1,
-      }));
-
       fetchProdutos(); // Atualiza os produtos para refletir o estoque atualizado.
     } catch (error: unknown) {
       console.error("Erro ao adicionar ao carrinho:", error);
       Alert.alert("Erro", "Erro ao adicionar produto ao carrinho.");
     }
-  };
-
-  const handleQuantidadeChange = (produtoId: number, delta: number) => {
-    const produto = produtos.find((p) => p.id === produtoId);
-    if (!produto) return;
-
-    setQuantidades((prev) => {
-      const novaQuantidade = Math.min(
-        Math.max((prev[produtoId] || 1) + delta, 1),
-        produto.quantity
-      );
-
-      return { ...prev, [produtoId]: novaQuantidade };
-    });
-  };
-
-  const renderProduct = (produto: Produto) => {
-    const quantidadeParaAdicionar = quantidades[produto.id] || 1;
-
-    return (
-      <View
-        key={produto.id}
-        className="flex-row bg-white rounded-lg shadow-md p-4 mb-4"
-      >
-        <Image
-          source={{
-            uri: produto.imageUrl || "https://via.placeholder.com/100",
-          }}
-          className="w-20 h-20 rounded-lg mr-4"
-        />
-        <View className="flex-1 justify-center">
-          <Text className="text-lg font-bold text-gray-800">{produto.name}</Text>
-          <Text className="text-base text-gray-600 my-1">
-            R$ {produto.price.toFixed(2)} por {produto.unitType.toLowerCase()}
-          </Text>
-          <Text className="text-sm text-gray-500">
-            Disponível: {produto.quantity}
-          </Text>
-
-          <View className="flex-row items-center justify-center mt-2 bg-gray-200 rounded-lg">
-            <TouchableOpacity
-              onPress={() => handleQuantidadeChange(produto.id, -1)}
-              className="px-2 py-1"
-            >
-              <Ionicons name="remove-outline" size={18} color="#333" />
-            </TouchableOpacity>
-            <Text className="px-4 py-1 text-base font-bold text-gray-800">
-              {quantidadeParaAdicionar}
-            </Text>
-            <TouchableOpacity
-              onPress={() => handleQuantidadeChange(produto.id, 1)}
-              className="px-2 py-1"
-            >
-              <Ionicons name="add-outline" size={18} color="#333" />
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity
-            className="flex-row items-center bg-[#009432] mt-2 py-2 px-4 rounded-lg shadow-md"
-            onPress={() => addToCarrinho(produto.id)}
-          >
-            <Ionicons name="cart-outline" size={20} color="#fff" />
-            <Text className="ml-2 text-white text-sm font-bold">
-              Adicionar ao Carrinho
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
   };
 
   useFocusEffect(
@@ -133,25 +43,39 @@ export default function Index() {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-100">
+      {/* Lista de produtos */}
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-        <View className="bg-[#009432] p-6">
-          <Text className="text-center text-2xl font-bold text-white">
-            Produtos Disponíveis
+        {/* Cabeçalho */}
+        <View className="bg-[#009432] pb-20 pt-12 px-6 rounded-b-[15px]">
+          <Text className="text-white text-3xl font-bold text-center">
+            AgroGestor
           </Text>
         </View>
 
-        <View className="px-4 py-6">
+        <View style={{ marginTop: -50 }}>
           {produtos.length > 0 ? (
-            produtos.map(renderProduct)
+            produtos.map((produto) => (
+              <ProductCard
+                key={produto.id}
+                id={produto.id}
+                name={produto.name}
+                price={produto.price}
+                unitType={produto.unitType}
+                quantity={produto.quantity}
+                imageUrl={produto.imageUrl}
+                onAddToCart={addToCarrinho}
+              />
+
+            ))
           ) : (
-            <Text className="text-center text-gray-500">
+            <Text className="text-center text-white">
               Nenhum produto disponível no momento.
             </Text>
           )}
         </View>
 
         <TouchableOpacity
-          className="bg-[#009432] py-4 mx-4 rounded-lg shadow-lg"
+          className="bg-[#009432] py-4 mx-4 mt-6 rounded-lg shadow-lg"
           onPress={() => router.push("/AddProduct")}
         >
           <Text className="text-center text-white text-lg font-bold">
