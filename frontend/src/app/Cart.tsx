@@ -1,13 +1,14 @@
 import React, { useState, useCallback } from "react";
 import {
   SafeAreaView,
-  ScrollView,
   Text,
   View,
   Image,
   TouchableOpacity,
   Alert,
   TextInput,
+  FlatList,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
@@ -26,10 +27,18 @@ type CarrinhoItem = {
   imageUrl?: string;
 };
 
+type NominatimResponse = {
+  display_name: string;
+  lat: string;
+  lon: string;
+};
+
 export default function Cart() {
   const [itens, setItens] = useState<CarrinhoItem[]>([]);
   const [useGps, setUseGps] = useState(false);
   const [manualLocation, setManualLocation] = useState("");
+  const [suggestions, setSuggestions] = useState<NominatimResponse[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const fetchCarrinho = async () => {
     try {
@@ -60,13 +69,37 @@ export default function Cart() {
         return null;
       }
       const location = await Location.getCurrentPositionAsync({});
-      return `${location.coords.latitude}, ${location.coords.longitude}`;
+      return `${location.coords.latitude},${location.coords.longitude}`;
     } catch (error) {
       console.error("Erro ao obter localização:", error);
       Alert.alert("Erro", "Não foi possível obter a localização pelo GPS.");
       return null;
     }
   };
+
+  const searchLocation = async (query: string) => {
+    if (!query.trim()) return;
+    setLoading(true);
+    try {
+      const response = await axios.get<NominatimResponse[]>("https://nominatim.openstreetmap.org/search", {
+        params: {
+          q: query,
+          format: "json",
+          limit: 5,
+        },
+        headers: {
+          "User-Agent": "AgroGestorApp/1.0", 
+        },
+      });
+      setSuggestions(response.data);
+    } catch (error) {
+      console.error("Erro ao buscar localizações:", error);
+      Alert.alert("Erro", "Não foi possível buscar as localizações.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
 
   const finalizarCompra = async () => {
     try {
@@ -100,17 +133,17 @@ export default function Cart() {
     }, [])
   );
 
-  const renderItem = (item: CarrinhoItem) => (
-    <View key={item.id} className="relative flex-row bg-white p-4 rounded-lg mb-4 shadow-md">
+  const renderCarrinhoItem = ({ item }: { item: CarrinhoItem }) => (
+    <View key={item.id} className="flex-row bg-white p-4 rounded-lg mb-4 shadow">
       <TouchableOpacity className="absolute top-2 right-2" onPress={() => removeFromCarrinho(item.id)}>
         <Ionicons name="close-outline" size={24} color="#FF0000" />
       </TouchableOpacity>
-      <Image source={{ uri: item.imageUrl || "https://via.placeholder.com/100" }} className="w-20 h-20 rounded-lg mr-4" />
-      <View className="flex-1 justify-center">
+      <Image source={{ uri: item.imageUrl || "https://via.placeholder.com/100" }} className="w-16 h-16 rounded-lg mr-4" />
+      <View className="flex-1">
         <Text className="text-lg font-bold text-gray-800">{item.name}</Text>
-        <Text className="text-base text-gray-600 my-1">Quantidade: {item.quantidade}</Text>
-        <Text className="text-base text-gray-600 my-1">Preço Unitário: R$ {item.price.toFixed(2)}</Text>
-        <Text className="text-lg font-semibold text-[#009432]">Subtotal: R$ {item.subtotal.toFixed(2)}</Text>
+        <Text className="text-sm text-gray-600">Quantidade: {item.quantidade}</Text>
+        <Text className="text-sm text-gray-600">Preço Unitário: R$ {item.price.toFixed(2)}</Text>
+        <Text className="text-lg font-semibold text-green-600">Subtotal: R$ {item.subtotal.toFixed(2)}</Text>
       </View>
     </View>
   );
@@ -119,40 +152,64 @@ export default function Cart() {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-100">
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }} className="p-4">
-        <Text className="text-2xl font-bold text-[#009432] text-center mb-6">Carrinho de Compras</Text>
-        {itens.length > 0 ? (
-          itens.map((item) => renderItem(item))
-        ) : (
-          <Text className="text-center text-gray-500">Seu carrinho está vazio.</Text>
-        )}
-        {itens.length > 0 && (
-          <View className="bg-white rounded-lg p-4 shadow-md mt-4">
-            <Text className="text-xl font-bold text-[#009432] mb-4">Total: R$ {calculateTotal()}</Text>
-            <View className="mb-4">
-              <TouchableOpacity
-                className={`py-2 px-4 rounded-lg ${useGps ? "bg-gray-300" : "bg-[#009432]"}`}
-                onPress={() => setUseGps(!useGps)}
-              >
-                <Text className="text-center text-white font-bold">
-                  {useGps ? "Usar Localização Manual" : "Usar Localização por GPS"}
-                </Text>
+      <FlatList
+        data={itens}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={renderCarrinhoItem}
+        ListHeaderComponent={
+          <Text className="text-2xl font-bold text-center text-green-600 my-4">Carrinho de Compras</Text>
+        }
+        ListEmptyComponent={<Text className="text-center text-gray-400">Seu carrinho está vazio.</Text>}
+        ListFooterComponent={
+          itens.length > 0 ? (
+            <View className="bg-white rounded-lg p-4 shadow mt-4">
+              <Text className="text-xl font-bold text-green-600 mb-4">Total: R$ {calculateTotal()}</Text>
+              <View className="mb-4">
+                <TouchableOpacity
+                  className={`py-2 px-4 rounded-lg ${useGps ? "bg-gray-400" : "bg-green-600"}`}
+                  onPress={() => setUseGps(!useGps)}
+                >
+                  <Text className="text-center text-white font-bold">
+                    {useGps ? "Usar Localização Manual" : "Usar Localização por GPS"}
+                  </Text>
+                </TouchableOpacity>
+                {!useGps && (
+                  <View>
+                    <TextInput
+                      className="border border-gray-300 rounded-lg p-2 mt-2"
+                      placeholder="Digite a localização manualmente"
+                      value={manualLocation}
+                      onChangeText={(text) => {
+                        setManualLocation(text);
+                        searchLocation(text);
+                      }}
+                    />
+                    {loading && <ActivityIndicator size="small" color="#009432" />}
+                    <FlatList
+                      data={suggestions}
+                      keyExtractor={(item, index) => index.toString()}
+                      renderItem={({ item }) => (
+                        <TouchableOpacity
+                          className="bg-gray-100 p-2 border-b border-gray-300"
+                          onPress={() => {
+                            setManualLocation(`${item.lat},${item.lon}`);
+                            setSuggestions([]);
+                          }}
+                        >
+                          <Text>{item.display_name}</Text>
+                        </TouchableOpacity>
+                      )}
+                    />
+                  </View>
+                )}
+              </View>
+              <TouchableOpacity className="bg-green-600 py-4 rounded-lg shadow" onPress={finalizarCompra}>
+                <Text className="text-center text-white text-lg font-bold">Finalizar Compra</Text>
               </TouchableOpacity>
-              {!useGps && (
-                <TextInput
-                  className="border border-gray-300 rounded-lg p-2 mt-2"
-                  placeholder="Digite a localização manualmente"
-                  value={manualLocation}
-                  onChangeText={setManualLocation}
-                />
-              )}
             </View>
-            <TouchableOpacity className="bg-[#009432] py-4 rounded-lg shadow-md" onPress={finalizarCompra}>
-              <Text className="text-center text-white text-lg font-bold">Finalizar Compra</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </ScrollView>
+          ) : null
+        }
+      />
     </SafeAreaView>
   );
 }

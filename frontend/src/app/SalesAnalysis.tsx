@@ -13,9 +13,11 @@ type Venda = {
 export default function SalesAnalysis() {
   const [vendas, setVendas] = useState<Venda[]>([]);
 
+  // Função para buscar as vendas
   const fetchVendas = async () => {
     try {
       const response = await axios.get(`${API_URL}/carrinho/analise`);
+      console.log("Dados recebidos:", response.data); // Debug do retorno
       setVendas(response.data);
     } catch (error) {
       console.error("Erro ao buscar análise de vendas:", error);
@@ -25,24 +27,33 @@ export default function SalesAnalysis() {
 
   useEffect(() => {
     fetchVendas();
+
+    // Atualização periódica a cada 5 segundos
+    const interval = setInterval(() => {
+      console.log("Atualizando dados...");
+      fetchVendas();
+    }, 5000);
+
+    // Limpar o intervalo ao desmontar o componente
+    return () => clearInterval(interval);
   }, []);
 
+  // Função para converter a localização
   const parseLocation = (location: string | null) => {
     if (!location) {
       console.warn("Localização inválida ou ausente:", location);
-      return { latitude: 0, longitude: 0 };
+      return null;
     }
-  
+
     const [latitude, longitude] = location.replace(/\s/g, "").split(",").map(Number);
-  
+
     if (isNaN(latitude) || isNaN(longitude)) {
       console.warn("Coordenadas inválidas:", { latitude, longitude });
-      return { latitude: 0, longitude: 0 };
+      return null;
     }
-  
+
     return { latitude, longitude };
   };
-  
 
   return (
     <View style={styles.container}>
@@ -51,15 +62,16 @@ export default function SalesAnalysis() {
         initialRegion={{
           latitude: -8.8828, // Latitude de Garanhuns
           longitude: -36.4964, // Longitude de Garanhuns
-          latitudeDelta: 0.10, // Ajuste o zoom (menor valor = mais próximo)
-          longitudeDelta: 0.10, // Ajuste o zoom (menor valor = mais próximo)
+          latitudeDelta: 0.5, // Ajuste o zoom (menor valor = mais próximo)
+          longitudeDelta: 0.5, // Ajuste o zoom (menor valor = mais próximo)
         }}
       >
         {vendas.map((venda, index) => {
-          const { latitude, longitude } = parseLocation(venda.location);
+          const location = parseLocation(venda.location);
 
-          // Ignorar markers com localização inválida
-          if (latitude === 0 && longitude === 0) return null;
+          if (!location) return null; // Ignorar localizações inválidas
+
+          const { latitude, longitude } = location;
 
           return (
             <Marker
@@ -71,7 +83,6 @@ export default function SalesAnalysis() {
           );
         })}
       </MapView>
-
     </View>
   );
 }
