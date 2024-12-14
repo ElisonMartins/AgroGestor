@@ -56,13 +56,23 @@ export const addToCarrinhoApi = async (
 
 // Adicionar novo produto
 export const addProdutoApi = async (formData: FormData): Promise<void> => {
-  try {
-    await axios.post(`${API_URL}/produto`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-  } catch (error) {
-    handleApiError(error);
-  }
+    try {
+      // Formata o valor do preço antes de enviá-lo para o backend
+      if (formData.has("price")) {
+        const priceValue = formData.get("price") as string | number;
+        const formattedPrice = parseFloat(priceValue as string).toFixed(2); // Garante o formato float com 2 casas decimais
+        formData.set("price", formattedPrice); // Atualiza o campo no FormData
+      }
+  
+      console.log("Dados enviados ao backend:", formData);
+      await axios.post(`${API_URL}/produto`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+    } catch (error) {
+      handleApiError(error);
+    }
 };
+  
+  

@@ -5,21 +5,32 @@ import { ValidationError } from "yup";
 
 export const create = async (req: Request, res: Response): Promise<void> => {
     try {
-        const imageUrl = (req.file as Express.MulterS3.File)?.location || null;
-
-        await produtoValidation.validate(req.body, { abortEarly: false });
-
-        const produto = await createProduto({ ...req.body, imageUrl });
-        res.status(201).send(produto);
+      const imageUrl = (req.file as Express.MulterS3.File)?.location || null;
+  
+      // Validação dos dados
+      await produtoValidation.validate(req.body, { abortEarly: false });
+  
+      // Converte os campos para os tipos corretos
+      const data = {
+        ...req.body,
+        price: parseFloat(req.body.price.replace(",", ".")), // Garante ponto como separador decimal
+        quantity: parseInt(req.body.quantity, 10), // Garante que seja um inteiro
+        imageUrl,
+    };
+    
+  
+      const produto = await createProduto(data);
+      res.status(201).send(produto);
     } catch (error) {
-        if (error instanceof ValidationError) {
-            res.status(400).send({ errors: error.errors });
-        } else {
-            console.error("Erro ao criar o produto:", error);
-            res.status(500).send({ error: "Erro no servidor ao criar o produto." });
-        }
+      if (error instanceof ValidationError) {
+        res.status(400).send({ errors: error.errors });
+      } else {
+        console.error("Erro ao criar o produto:", error);
+        res.status(500).send({ error: "Erro no servidor ao criar o produto." });
+      }
     }
-};
+  };
+  
 
 export const get = async (_req: Request, res: Response): Promise<void> => {
     try {

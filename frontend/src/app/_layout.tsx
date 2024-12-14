@@ -54,17 +54,7 @@ export default function RootLayout() {
         }}
       />
 
-      {/* Página Configurações */}
-      <Tabs.Screen
-        name="Config"
-        options={{
-          headerTitle: "Configurações",
-          tabBarLabel: "Configurações",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" size={size} color={color} />
-          ),
-        }}
-      />
+     
     </Tabs>
   );
 }

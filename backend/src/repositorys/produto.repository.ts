@@ -6,13 +6,9 @@ export const createProduto = async (data: Prisma.ProdutoCreateInput) => {
   console.log("Recebendo dados para criação de produto:", data);
 
   try {
-    // Converte os campos necessários antes da criação
+    // Não converta o preço novamente aqui; ele já vem como Float do frontend
     const produto = await prisma.produto.create({
-      data: {
-        ...data,
-        price: parseFloat(data.price as unknown as string), // Converte o preço para Float
-        quantity: parseInt(data.quantity as unknown as string, 10), // Converte a quantidade para Int
-      },
+      data,
     });
 
     console.log("Produto criado com sucesso:", produto);
@@ -20,14 +16,14 @@ export const createProduto = async (data: Prisma.ProdutoCreateInput) => {
   } catch (error) {
     console.error("Erro ao criar o produto:", error);
 
-    // Lançar erro com informações detalhadas para que o controlador possa retornar a mensagem correta
     throw new Error(
-      `Erro ao criar o produto. Dados recebidos: ${JSON.stringify(data)}. Detalhes do erro: ${
+      `Erro ao criar o produto. Detalhes do erro: ${
         error instanceof Error ? error.message : "Erro desconhecido"
       }`
     );
   }
 };
+
 
 // Função para buscar todos os produtos
 export const getAll = async () => {

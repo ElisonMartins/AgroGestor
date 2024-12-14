@@ -12,9 +12,16 @@ export const addCarrinhoItem = async (data: { produtoId: number; quantidade: num
     throw new Error("Produto não encontrado.");
   }
 
+  // Buscar ou criar o carrinho mais recente
+  const carrinho = await prisma.carrinho.findFirst({
+    where: {},
+    orderBy: { createdAt: "desc" }, // Pega o carrinho mais recente
+  }) ?? await prisma.carrinho.create({ data: {} });
+
+  // Verificar se o item já existe no carrinho
   const existingItem = await prisma.carrinhoItem.findFirst({
     where: {
-      carrinhoId: 1,
+      carrinhoId: carrinho.id,
       produtoId: data.produtoId,
     },
   });
@@ -29,6 +36,7 @@ export const addCarrinhoItem = async (data: { produtoId: number; quantidade: num
   }
 
   if (existingItem) {
+    // Atualizar quantidade do item existente
     return prisma.carrinhoItem.update({
       where: { id: existingItem.id },
       data: { quantidade: novaQuantidadeTotal },
@@ -36,11 +44,12 @@ export const addCarrinhoItem = async (data: { produtoId: number; quantidade: num
     });
   }
 
+  // Adicionar novo item ao carrinho
   return prisma.carrinhoItem.create({
     data: {
       quantidade: data.quantidade,
       produto: { connect: { id: data.produtoId } },
-      carrinho: { connectOrCreate: { where: { id: 1 }, create: {} } },
+      carrinho: { connect: { id: carrinho.id } },
     },
     include: { produto: true },
   });
@@ -48,29 +57,35 @@ export const addCarrinhoItem = async (data: { produtoId: number; quantidade: num
 
 // Obter itens do carrinho
 export const getCarrinhoItems = async () => {
-  const carrinho = await prisma.carrinho.findUnique({
-    where: { id: 1 },
+  // Buscar o carrinho mais recente
+  const carrinho = await prisma.carrinho.findFirst({
+    orderBy: { createdAt: "desc" },
     include: {
       items: {
-        include: { produto: true },
+        include: { produto: true }, // Incluir detalhes do produto
       },
     },
   });
 
-  if (!carrinho) {
+  if (!carrinho || carrinho.items.length === 0) {
+    console.warn("Carrinho não encontrado ou sem itens.");
     return [];
   }
 
-  return carrinho.items.map((item) => ({
+  // Mapear os itens do carrinho para o formato esperado
+  const itensMapeados = carrinho.items.map((item) => ({
     id: item.id,
     produtoId: item.produtoId,
     name: item.produto.name,
-    price: item.produto.price,
+    price: parseFloat(item.produto.price.toFixed(2)), // Garantir 2 casas decimais
     unitType: item.produto.unitType,
     quantidade: item.quantidade,
-    subtotal: item.quantidade * item.produto.price,
+    subtotal: parseFloat((item.quantidade * item.produto.price).toFixed(2)), // Garantir 2 casas decimais
     imageUrl: item.produto.imageUrl || "https://via.placeholder.com/100",
   }));
+
+  console.log("Itens do carrinho mapeados:", itensMapeados);
+  return itensMapeados;
 };
 
 // Remover item do carrinho
@@ -80,53 +95,42 @@ export const removeCarrinhoItem = async (id: number) => {
 
 // Finalizar compra e atualizar estoque
 export const checkoutCarrinho = async (): Promise<{ carrinhoId: number; total: number }> => {
-  try {
-    console.log("Iniciando o checkout do carrinho...");
-    const carrinho = await prisma.carrinho.findUnique({
-      where: { id: 1 },
-      include: { items: { include: { produto: true } } },
+  console.log("Iniciando o checkout do carrinho...");
+  const carrinho = await prisma.carrinho.findFirst({
+    orderBy: { createdAt: "desc" },
+    include: { items: { include: { produto: true } } },
+  });
+
+  if (!carrinho || carrinho.items.length === 0) {
+    console.error("Carrinho vazio ou não encontrado.");
+    throw new Error("Carrinho vazio.");
+  }
+
+  let total = 0;
+
+  for (const item of carrinho.items) {
+    const produto = item.produto;
+
+    if (produto.quantity < item.quantidade) {
+      console.error(`Estoque insuficiente para o produto ${produto.name}.`);
+      throw new Error(`Estoque insuficiente para o produto ${produto.name}.`);
+    }
+
+    const novaQuantidade = produto.quantity - item.quantidade;
+
+    await prisma.produto.update({
+      where: { id: produto.id },
+      data: { quantity: novaQuantidade },
     });
 
-    if (!carrinho || carrinho.items.length === 0) {
-      console.error("Carrinho vazio ou não encontrado.");
-      throw new Error("Carrinho vazio.");
-    }
-
-    let total = 0;
-
-    for (const item of carrinho.items) {
-      const produto = item.produto;
-
-      if (produto.quantity < item.quantidade) {
-        console.error(`Estoque insuficiente para o produto ${produto.name}.`);
-        throw new Error(`Estoque insuficiente para o produto ${produto.name}.`);
-      }
-
-      const novaQuantidade = produto.quantity - item.quantidade;
-
-      if (novaQuantidade === 0) {
-        console.log(`Removendo produto ${produto.name}, estoque zerado.`);
-        await prisma.produto.delete({ where: { id: produto.id } });
-      } else {
-        console.log(`Atualizando estoque do produto ${produto.name}: ${novaQuantidade} restantes.`);
-        await prisma.produto.update({
-          where: { id: produto.id },
-          data: { quantity: novaQuantidade },
-        });
-      }
-
-      total += item.quantidade * produto.price;
-    }
-
-    console.log("Limpando o carrinho...");
-    await prisma.carrinhoItem.deleteMany({ where: { carrinhoId: carrinho.id } });
-
-    console.log(`Checkout concluído com sucesso. Total: ${total}`);
-    return { carrinhoId: carrinho.id, total };
-  } catch (error: any) {
-    console.error("Erro no checkoutCarrinho:", error.message);
-    throw new Error("Erro ao finalizar o checkout do carrinho.");
+    total += item.quantidade * produto.price;
   }
+
+  console.log("Limpando o carrinho...");
+  await prisma.carrinhoItem.deleteMany({ where: { carrinhoId: carrinho.id } });
+
+  console.log(`Checkout concluído com sucesso. Total: ${total}`);
+  return { carrinhoId: carrinho.id, total: parseFloat(total.toFixed(2)) };
 };
 
 // Salvar venda associada ao carrinho
@@ -135,21 +139,15 @@ export const saveVenda = async (
   total: number,
   location: string | null
 ): Promise<{ id: number; total: number; location: string | null; createdAt: Date }> => {
-  try {
-    console.log("Salvando venda...", { carrinhoId, total, location });
-    const venda = await prisma.venda.create({
-      data: {
-        total,
-        location,
-        carrinhoId,
-      },
-    });
-    console.log("Venda salva com sucesso:", venda);
-    return venda;
-  } catch (error: any) {
-    console.error("Erro ao salvar a venda:", error.message);
-    throw new Error("Erro ao salvar a venda.");
-  }
+  const venda = await prisma.venda.create({
+    data: {
+      total: parseFloat(total.toFixed(2)), // Garantir 2 casas decimais
+      location,
+      carrinhoId,
+    },
+  });
+  console.log("Venda salva com sucesso:", venda);
+  return venda;
 };
 
 // Buscar análise de vendas agrupadas por local
