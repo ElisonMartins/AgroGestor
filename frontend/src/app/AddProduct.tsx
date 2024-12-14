@@ -9,38 +9,41 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import * as ImagePicker from "expo-image-picker";
-import { addProdutoApi } from "../api/produtoApi";
+import * as ImagePicker from "expo-image-picker"; // Biblioteca para selecionar imagens
+import { addProdutoApi } from "../api/produtoApi"; // Função de API para adicionar produtos
 
+// Componente para cadastrar um produto
 export default function AddProduct() {
+  // Estados para armazenar os dados do produto
   const [productName, setProductName] = useState("");
   const [productPrice, setProductPrice] = useState("");
   const [productQuantity, setProductQuantity] = useState("");
   const [unitType, setUnitType] = useState<"Unidade" | "Quilo">("Unidade");
   const [image, setImage] = useState<string | null>(null);
 
-  // Função para selecionar imagem
+  // Função para selecionar uma imagem
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      quality: 1,
+      mediaTypes: ["images"], // Permite apenas imagens
+      allowsEditing: true, // Habilita edição antes de selecionar
+      quality: 1, // Qualidade máxima da imagem
     });
 
     if (!result.canceled) {
       const selectedImage = result.assets[0];
+      // Verifica se o arquivo não excede 5 MB
       if (selectedImage.fileSize && selectedImage.fileSize > 5 * 1024 * 1024) {
         Alert.alert("Erro", "O arquivo selecionado excede o limite de 5 MB.");
         return;
       }
 
-      setImage(selectedImage.uri);
+      setImage(selectedImage.uri); // Armazena o URI da imagem
     }
   };
-
-
-  // Função para enviar produto
+  
+  // Função para enviar o produto
   const handleAddProduct = async () => {
+    // Valida os campos obrigatórios
     if (!productName || !productPrice || !productQuantity || !image) {
       Alert.alert(
         "Erro",
@@ -48,29 +51,31 @@ export default function AddProduct() {
       );
       return;
     }
-  
-    // Substitui vírgulas por pontos no valor do preço antes de convertê-lo
+
+    // Substitui vírgulas por pontos no preço e converte para número
     const formattedPrice = parseFloat(productPrice.replace(",", "."));
-  
+
     if (isNaN(formattedPrice)) {
       Alert.alert("Erro", "Insira um preço válido.");
       return;
     }
-  
+
+    // Cria um objeto FormData para envio de dados
     const formData = new FormData();
     formData.append("name", productName);
-    formData.append("price", formattedPrice.toFixed(2)); // Garante que o preço tenha duas casas decimais
+    formData.append("price", formattedPrice.toFixed(2)); // Formata o preço com 2 casas decimais
     formData.append("unitType", unitType);
     formData.append("quantity", parseInt(productQuantity, 10).toString());
     formData.append("image", {
       uri: image,
-      name: `image_${Date.now()}.jpg`,
-      type: "image/jpeg",
+      name: `image_${Date.now()}.jpg`, // Nome único para a imagem
+      type: "image/jpeg", // Tipo MIME
     } as any);
-  
+
     try {
-      await addProdutoApi(formData);
+      await addProdutoApi(formData); // Chama a API para adicionar o produto
       Alert.alert("Sucesso", "Produto cadastrado com sucesso!");
+      // Reseta os estados após o sucesso
       setProductName("");
       setProductPrice("");
       setProductQuantity("");
@@ -83,7 +88,7 @@ export default function AddProduct() {
         error instanceof Error ? error.message : "Erro desconhecido"
       );
     }
-  };  
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-gray-100">
@@ -92,7 +97,7 @@ export default function AddProduct() {
           Cadastro de Produto
         </Text>
 
-        {/* Nome do Produto */}
+        {/* Campo para o nome do produto */}
         <View className="mb-6">
           <Text className="text-lg font-semibold text-gray-700 mb-2">
             Nome do Produto:
@@ -105,7 +110,7 @@ export default function AddProduct() {
           />
         </View>
 
-        {/* Preço */}
+        {/* Campo para o preço */}
         <View className="mb-6">
           <Text className="text-lg font-semibold text-gray-700 mb-2">Preço:</Text>
           <TextInput
@@ -113,11 +118,11 @@ export default function AddProduct() {
             value={productPrice}
             onChangeText={setProductPrice}
             placeholder="Digite o preço"
-            keyboardType="numeric"
+            keyboardType="numeric" // Teclado numérico
           />
         </View>
 
-        {/* Tipo de Unidade */}
+        {/* Seleção do tipo de unidade */}
         <View className="mb-6">
           <Text className="text-lg font-semibold text-gray-700 mb-2">
             Tipo de Unidade:
@@ -154,7 +159,7 @@ export default function AddProduct() {
           </View>
         </View>
 
-        {/* Quantidade Disponível */}
+        {/* Campo para quantidade disponível */}
         <View className="mb-6">
           <Text className="text-lg font-semibold text-gray-700 mb-2">
             Quantidade Disponível:
@@ -164,11 +169,11 @@ export default function AddProduct() {
             value={productQuantity}
             onChangeText={setProductQuantity}
             placeholder="Digite a quantidade disponível"
-            keyboardType="numeric"
+            keyboardType="numeric" // Teclado numérico
           />
         </View>
 
-        {/* Selecionar Imagem */}
+        {/* Botão para selecionar uma imagem */}
         <View className="mb-6">
           <Text className="text-lg font-semibold text-gray-700 mb-2">
             Imagem do Produto:
@@ -189,7 +194,7 @@ export default function AddProduct() {
           )}
         </View>
 
-        {/* Botão de Adicionar Produto */}
+        {/* Botão para adicionar o produto */}
         <TouchableOpacity
           className="bg-[#009432] rounded-lg px-4 py-4 shadow-lg"
           onPress={handleAddProduct}

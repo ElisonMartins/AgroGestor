@@ -3,19 +3,21 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 // Adicionar item ao carrinho
+// Função para adicionar um item ao carrinho. Se o carrinho mais recente não existir, ele será criado.
+// Verifica se o item já está no carrinho e atualiza a quantidade, ou adiciona um novo item ao carrinho.
 export const addCarrinhoItem = async (data: { produtoId: number; quantidade: number }) => {
   const produto = await prisma.produto.findUnique({
     where: { id: data.produtoId },
   });
 
   if (!produto) {
-    throw new Error("Produto não encontrado.");
+    throw new Error("Produto não encontrado."); // Erro se o produto não existir
   }
 
   // Buscar ou criar o carrinho mais recente
   const carrinho = await prisma.carrinho.findFirst({
     where: {},
-    orderBy: { createdAt: "desc" }, // Pega o carrinho mais recente
+    orderBy: { createdAt: "desc" }, // Seleciona o carrinho mais recente
   }) ?? await prisma.carrinho.create({ data: {} });
 
   // Verificar se o item já existe no carrinho
@@ -56,13 +58,13 @@ export const addCarrinhoItem = async (data: { produtoId: number; quantidade: num
 };
 
 // Obter itens do carrinho
+// Função para buscar os itens do carrinho mais recente. Retorna uma lista formatada de itens com detalhes do produto.
 export const getCarrinhoItems = async () => {
-  // Buscar o carrinho mais recente
   const carrinho = await prisma.carrinho.findFirst({
-    orderBy: { createdAt: "desc" },
+    orderBy: { createdAt: "desc" }, // Seleciona o carrinho mais recente
     include: {
       items: {
-        include: { produto: true }, // Incluir detalhes do produto
+        include: { produto: true }, // Inclui os detalhes do produto
       },
     },
   });
@@ -72,7 +74,7 @@ export const getCarrinhoItems = async () => {
     return [];
   }
 
-  // Mapear os itens do carrinho para o formato esperado
+  // Mapeia os itens do carrinho no formato esperado
   const itensMapeados = carrinho.items.map((item) => ({
     id: item.id,
     produtoId: item.produtoId,
@@ -89,11 +91,13 @@ export const getCarrinhoItems = async () => {
 };
 
 // Remover item do carrinho
+// Função para remover um item do carrinho com base no ID do item.
 export const removeCarrinhoItem = async (id: number) => {
   return prisma.carrinhoItem.delete({ where: { id } });
 };
 
 // Finalizar compra e atualizar estoque
+// Função para realizar o checkout do carrinho, atualizando o estoque dos produtos e limpando o carrinho.
 export const checkoutCarrinho = async (): Promise<{ carrinhoId: number; total: number }> => {
   console.log("Iniciando o checkout do carrinho...");
   const carrinho = await prisma.carrinho.findFirst({
@@ -134,6 +138,7 @@ export const checkoutCarrinho = async (): Promise<{ carrinhoId: number; total: n
 };
 
 // Salvar venda associada ao carrinho
+// Função para salvar os detalhes de uma venda realizada com base no carrinho.
 export const saveVenda = async (
   carrinhoId: number,
   total: number,
@@ -151,6 +156,7 @@ export const saveVenda = async (
 };
 
 // Buscar análise de vendas agrupadas por local
+// Função para agrupar vendas realizadas por localização, retornando uma análise com contagem e soma de vendas.
 export const getVendasAgrupadasPorLocal = async (): Promise<
   { location: string | null; _count: { _all: number }; _sum: { total: number | null } }[]
 > => {
